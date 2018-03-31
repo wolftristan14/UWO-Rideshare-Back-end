@@ -31,7 +31,7 @@ exports.createUser = functions.firestore
 
   return db.collection('users').doc(driverEmail).get().then(function(results) {
     //if (results.exists) {
-    console.log(results.data())
+  //  console.log(results.data())
     // results.forEach(function(doc) {
     //     console.log(doc.data());
     //
@@ -43,8 +43,8 @@ exports.createUser = functions.firestore
     const resultsSnapshot = results.data();
     const tokensSnapshot = resultsSnapshot.notificationTokens;
     // Check if there are any device tokens.
-    console.log('log test');
-  console.log(tokensSnapshot);
+  //  console.log('log test');
+//  console.log(tokensSnapshot);
 
 
     // Notification details.
@@ -70,7 +70,7 @@ exports.createUser = functions.firestore
 
 
 
-    console.log(tokens)
+  //  console.log(tokens)
     // Send notifications to all tokens.
     return admin.messaging().sendToDevice(tokens, payload);
   }).then((response) => {
@@ -95,15 +95,49 @@ exports.helloWorld = functions.https.onRequest((request, response) => {
   response.send("Hello from Firebase!");
 });
 
+var docRef = functions.firestore.document('Rides/{rideId}')
 // Update the search index every time a blog post is written.
-exports.onNoteCreated = functions.firestore.document('Rides/{rideId}').onCreate(event => {
+exports.onNoteCreate = docRef.onCreate(event => {
     // Get the note document
     const note = event.data.data();
-
+    note.docid = event.data.id;
+    //console.log(evetn.data)
     // Add an 'objectID' field which Algolia requires
-    note.objectID = event.params.noteId;
+    note.objectID = note.docid;
 
     // Write to the algolia index
     const index = client.initIndex(ALGOLIA_INDEX_NAME);
     return index.addObject(note);
+});
+
+exports.OnNoteUpdate = functions.firestore.document('Rides/{rideId}').onUpdate(event => {
+
+const newValue = event.data.data();
+const previousValue = event.data.previous.data();
+newValue.docid = event.data.id;
+newValue.objectID = newValue.docid;
+//console.log(event.data)
+//console.log(event.params)
+//newValue.objectID = event.par
+
+//const previousValue = event.data.previous.data();
+const index = client.initIndex(ALGOLIA_INDEX_NAME);
+return index.saveObject(newValue);
+
+
+});
+
+exports.onNoteDelete = functions.firestore.document('Rides/{rideId}').onDelete(event => {
+
+const deletedValue = event.data.previous.data();
+const deletedObjectID = event.data.previous.id;
+console.log(event.data.previous.id);
+//console.log(deletedObjectID)
+const index = client.initIndex(ALGOLIA_INDEX_NAME);
+return index.deleteObject(deletedObjectID, function(err, content) {
+  if (err) throw err;
+
+  //console.log(content);
+});
+
 });
