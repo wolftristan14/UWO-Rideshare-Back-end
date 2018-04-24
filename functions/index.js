@@ -15,7 +15,103 @@ var db = admin.firestore();
 // // Create and Deploy Your First Cloud Functions
 // // https://firebase.google.com/docs/functions/write-firebase-functions
 //
-exports.createUser = functions.firestore
+
+exports.addRideToPastRides = functions.firestore
+.document('PastRides/{pastrideid}')
+.onCreate(event => {
+  const pastRideID = event.params.pastrideid
+  // Get an object representing the document
+  // e.g. {'name': 'Marie', 'age': 66}
+  //console.log(event)
+  var newValue = event.data.data();
+  console.log(newValue);
+  var passengers = newValue.passengers;
+  const keys = Object.keys(passengers);
+  console.log(keys);
+
+  //var driverEmail = newValue.passengers.keys;
+
+  //const getDeviceTokensPromise = db.collection('users').doc('${driverEmail}').get();
+
+
+  for(var i = 0; i < keys.length; i++){
+  console.log(passengers);
+  console.log(keys[i]);
+  return db.collection('users').doc(keys[i]).get().then(function(results) {
+    //if (results.exists) {
+  //  console.log(results.data())
+    // results.forEach(function(doc) {
+    //     console.log(doc.data());
+    //
+    //     var userData = doc.data()
+    //     var userId = doc.id
+    //     console.log(mobileToCheck + "Exist In DB");
+    // });
+//}
+
+    const resultsSnapshot = results.data();
+    console.log(results);
+    console.log(resultsSnapshot);
+    const tokensSnapshot = resultsSnapshot.notificationTokens;
+    // Check if there are any device tokens.
+  //  console.log('log test');
+//  console.log(tokensSnapshot);
+
+
+    // Notification details.
+    const payload = {
+      notification: {
+        title: 'Thank you for using UWO Rideshare!',
+        body: `Please rate your driver so that we can improve your future experience!`,
+        driverid: keys[i]
+      },
+    };
+   var tokens = []
+   for(var key in tokensSnapshot){
+    tokens.push(tokensSnapshot[key])
+    console.log(passengers)
+
+    //alert(i); // alerts key
+    //alert(foo[i]); //alerts key's value
+}
+   //var key = Object.keys(tokensSnapshot)[0];
+    // Listing all tokens.
+
+
+  //  tokens.push(tokensSnapshot[key])
+
+
+
+  console.log(passengers)
+
+  //  console.log(tokens)
+    // Send notifications to all tokens.
+    return admin.messaging().sendToDevice(tokens, payload);
+  }).then((response) => {
+    // For each message check if there was an error.
+    console.log(passengers)
+
+    const tokensToRemove = [];
+    response.results.forEach((result, index) => {
+      const error = result.error;
+      if (error) {
+        console.log(passengers)
+
+        console.error('Failure sending notification to', tokens[index], error);
+        // Cleanup the tokens who are not registered anymore.
+        if (error.code === 'messaging/invalid-registration-token' || error.code === 'messaging/registration-token-not-registered') {
+          tokensToRemove.push(tokensSnapshot.ref.child(tokens[index]).remove());
+        }
+      }
+    });
+    return Promise.all(tokensToRemove);
+
+  });
+}
+});
+
+
+exports.createRequest = functions.firestore
 .document('Requests/{requestid}')
 .onCreate(event => {
   const requestID = event.params.requestid;
@@ -23,13 +119,13 @@ exports.createUser = functions.firestore
   // e.g. {'name': 'Marie', 'age': 66}
   //console.log(event)
   var newValue = event.data.data();
-  var driverEmail = newValue.driverEmail;
-
+  var driverUID = newValue.driverUID;
+  console.log(driverUID);
   //const getDeviceTokensPromise = db.collection('users').doc('${driverEmail}').get();
 
 
 
-  return db.collection('users').doc(driverEmail).get().then(function(results) {
+  return db.collection('users').doc(driverUID).get().then(function(results) {
     //if (results.exists) {
   //  console.log(results.data())
     // results.forEach(function(doc) {
@@ -42,6 +138,8 @@ exports.createUser = functions.firestore
 //}
     const resultsSnapshot = results.data();
     const tokensSnapshot = resultsSnapshot.notificationTokens;
+    console.log(tokensSnapshot);
+
     // Check if there are any device tokens.
   //  console.log('log test');
 //  console.log(tokensSnapshot);
@@ -89,6 +187,7 @@ exports.createUser = functions.firestore
     return Promise.all(tokensToRemove);
 
   });
+
 });
 
 exports.helloWorld = functions.https.onRequest((request, response) => {
